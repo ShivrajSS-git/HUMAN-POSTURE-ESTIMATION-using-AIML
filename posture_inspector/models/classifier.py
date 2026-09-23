@@ -53,7 +53,7 @@ class PostureClassifierManager:
         if os.path.exists(self.pytorch_model_path):
             try:
                 model = PosturePyTorchNet()
-                model.load_state_dict(torch.load(self.pytorch_model_path, map_location=torch.device('cpu')))
+                model.load_state_dict(torch.load(self.pytorch_model_path, map_location=torch.device('cpu'), weights_only=True))
                 model.eval()
                 self.pytorch_model = model
             except Exception as e:
