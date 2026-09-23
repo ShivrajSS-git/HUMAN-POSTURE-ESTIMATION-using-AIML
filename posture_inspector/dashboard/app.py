@@ -201,7 +201,7 @@ def get_telemetry():
 
 def run_dashboard(host="127.0.0.1", port=8000):
     """Launch Uvicorn server for Web Dashboard."""
-    print(f"🚀 Launching Live Web Dashboard at: http://{host}:{port}")
+    print(f"[*] Launching Live Web Dashboard at: http://{host}:{port}")
     uvicorn.run(app, host=host, port=port)
 
 if __name__ == "__main__":
