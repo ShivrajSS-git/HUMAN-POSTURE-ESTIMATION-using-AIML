@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/
+output_inspection_result.png
+snapshot_result.png
+HUMAN POSTURE ESTIMATION/inspection_result.png
+posture_model.pkl
