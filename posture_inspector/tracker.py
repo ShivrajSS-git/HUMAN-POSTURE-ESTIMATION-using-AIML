@@ -83,23 +83,35 @@ class PoseTracker:
             result_info["metrics"] = metrics
             feature_vector = FeatureExtractor.extract_feature_vector(landmarks)
 
-            # Model Inference
-            posture_label, confidence = self.classifier.predict(feature_vector)
-            result_info["posture_label"] = posture_label
-            result_info["confidence"] = confidence
+            # Check Camera Distance / Framing (e.g., face only visible)
+            framing_status = FeatureExtractor.check_camera_framing(landmarks)
+            result_info["framing_status"] = framing_status
 
-            # Calculate Ergonomic Risk Level based on posture & neck inclination
-            neck_inc = metrics.get("neck_inclination", 0)
-            torso_angle = metrics.get("torso_spine_angle", 0)
-
-            if posture_label in ["slouching", "bending"] or neck_inc > 30.0 or torso_angle > 30.0:
-                ergonomic_risk = "HIGH RISK"
-            elif neck_inc > 18.0 or torso_angle > 18.0:
-                ergonomic_risk = "MODERATE RISK"
+            if framing_status == "TOO_CLOSE_STEP_BACK":
+                posture_label = "STEP BACK (TOO CLOSE)"
+                confidence = 0.99
+                ergonomic_risk = "FRAMING WARNING"
+                result_info["posture_label"] = posture_label
+                result_info["confidence"] = confidence
+                result_info["ergonomic_risk"] = ergonomic_risk
             else:
-                ergonomic_risk = "LOW RISK"
+                # Model Inference
+                posture_label, confidence = self.classifier.predict(feature_vector)
+                result_info["posture_label"] = posture_label
+                result_info["confidence"] = confidence
 
-            result_info["ergonomic_risk"] = ergonomic_risk
+                # Calculate Ergonomic Risk Level based on posture & neck inclination
+                neck_inc = metrics.get("neck_inclination", 0)
+                torso_angle = metrics.get("torso_spine_angle", 0)
+
+                if posture_label in ["slouching", "bending"] or neck_inc > 30.0 or torso_angle > 30.0:
+                    ergonomic_risk = "HIGH RISK"
+                elif neck_inc > 18.0 or torso_angle > 18.0:
+                    ergonomic_risk = "MODERATE RISK"
+                else:
+                    ergonomic_risk = "LOW RISK"
+
+                result_info["ergonomic_risk"] = ergonomic_risk
 
             # Dispatch PLC Industrial Signal if dispatcher provided
             if plc_dispatcher is not None:
@@ -136,8 +148,8 @@ class PoseTracker:
         fps = result_info["fps"]
 
         # Color palette
-        if risk == "HIGH RISK":
-            color = (0, 0, 255) # Red
+        if risk in ["HIGH RISK", "FRAMING WARNING"]:
+            color = (0, 0, 255) if risk == "HIGH RISK" else (0, 165, 255) # Red or Orange
         elif risk == "MODERATE RISK":
             color = (0, 165, 255) # Orange
         else:
@@ -157,6 +169,12 @@ class PoseTracker:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
         cv2.putText(frame, f"LATENCY: {self.latency_ms:.1f}ms", (w - 180, 68),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
+
+        # Framing Warning Overlay if camera is too close
+        if result_info.get("framing_status") == "TOO_CLOSE_STEP_BACK":
+            cv2.rectangle(frame, (20, 90), (w - 20, 140), (0, 140, 255), -1)
+            cv2.putText(frame, "WARNING: CAMERA TOO CLOSE! STEP BACK FOR FULL TORSO VIEW",
+                        (30, 123), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
 
         # Bottom Joint Angle Overlay Panel
         if metrics:

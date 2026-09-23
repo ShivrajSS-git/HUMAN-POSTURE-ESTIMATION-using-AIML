@@ -39,6 +39,45 @@ class FeatureExtractor:
             angle = 360.0 - angle
         return angle
 
+    @classmethod
+    def check_camera_framing(cls, landmarks):
+        """
+        Check if the operator is framed properly for posture inspection.
+        Returns: framing_status ('OK', 'TOO_CLOSE_STEP_BACK', 'BODY_OUT_OF_FRAME')
+        """
+        def get_vis(idx):
+            lm = landmarks[idx]
+            return getattr(lm, 'visibility', 1.0)
+
+        left_shoulder_vis = get_vis(cls.LEFT_SHOULDER)
+        right_shoulder_vis = get_vis(cls.RIGHT_SHOULDER)
+        left_hip_vis = get_vis(cls.LEFT_HIP)
+        right_hip_vis = get_vis(cls.RIGHT_HIP)
+
+        # Average visibility of shoulders and hips
+        shoulder_vis = (left_shoulder_vis + right_shoulder_vis) / 2.0
+        hip_vis = (left_hip_vis + right_hip_vis) / 2.0
+
+        # Check Y position of hips and shoulders
+        left_hip_y = landmarks[cls.LEFT_HIP].y
+        right_hip_y = landmarks[cls.RIGHT_HIP].y
+        left_shoulder_y = landmarks[cls.LEFT_SHOULDER].y
+        right_shoulder_y = landmarks[cls.RIGHT_SHOULDER].y
+
+        # Face size vs shoulder width ratio
+        nose_y = landmarks[cls.NOSE].y
+        shoulder_width = abs(landmarks[cls.LEFT_SHOULDER].x - landmarks[cls.RIGHT_SHOULDER].x)
+
+        # Conditions where camera is too close (only face/head visible or hips cut off)
+        if shoulder_vis < 0.45 or hip_vis < 0.35 or left_hip_y > 1.02 or right_hip_y > 1.02:
+            return "TOO_CLOSE_STEP_BACK"
+
+        # If shoulders take up more than 85% of frame width, camera is extremely close
+        if shoulder_width > 0.85 or (left_shoulder_y < 0.05 and hip_vis < 0.5):
+            return "TOO_CLOSE_STEP_BACK"
+
+        return "OK"
+
     @staticmethod
     def calculate_spine_inclination(shoulder_mid, hip_mid):
         """

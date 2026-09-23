@@ -37,7 +37,6 @@ def generate_frames():
     """MJPEG Video Stream Generator."""
     tr, plc = get_engine()
     
-    # Try opening physical camera, fallback to synthetic test frame if unavailable
     cap = cv2.VideoCapture(0)
     camera_available = cap.isOpened()
     
@@ -56,16 +55,13 @@ def generate_frames():
             if test_img is not None:
                 frame = test_img.copy()
             else:
-                # Blank placeholder canvas if no test image
                 frame = np.zeros((480, 640, 3), dtype=np.uint8)
                 cv2.putText(frame, "VIDEO FEED OFFLINE", (150, 240),
                             cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
-            time.sleep(0.03) # ~30 FPS frame timing simulation
+            time.sleep(0.03)
 
-        # Process frame through PoseTracker & PLC Dispatcher
         processed_frame, _ = tr.process_frame(frame, draw_hud=True, plc_dispatcher=plc)
 
-        # Encode to JPEG
         ret, buffer = cv2.imencode('.jpg', processed_frame)
         if not ret:
             continue
@@ -86,97 +82,425 @@ def index_page():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Industrial Posture AI Inspection Dashboard</title>
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+        <title>Industrial AI Ergonomics & Posture Inspector</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        
         <style>
-            * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
-            body { background-color: #0b0f19; color: #f1f5f9; display: flex; flex-direction: column; min-height: 100vh; }
-            header { background: linear-gradient(90deg, #1e293b, #0f172a); border-bottom: 1px solid #334155; padding: 18px 30px; display: flex; justify-content: space-between; align-items: center; }
-            h1 { font-size: 1.5rem; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 10px; }
-            .badge { background: #0284c7; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; }
-            .container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; padding: 25px; flex-grow: 1; }
-            .card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-            .video-container { position: relative; width: 100%; border-radius: 10px; overflow: hidden; background: #000; display: flex; justify-content: center; }
-            .video-stream { width: 100%; height: auto; max-height: 520px; object-fit: contain; }
-            .stat-box { background: #0f172a; border-radius: 10px; padding: 15px; margin-bottom: 15px; border-left: 4px solid #38bdf8; }
-            .stat-title { font-size: 0.85rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
-            .stat-value { font-size: 1.6rem; font-weight: 700; margin-top: 5px; color: #f8fafc; }
-            .plc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-            .plc-pin { background: #0f172a; padding: 10px; border-radius: 8px; text-align: center; font-size: 0.8rem; border: 1px solid #334155; }
-            .pin-on { border-color: #22c55e; color: #4ade80; background: rgba(34, 197, 94, 0.1); }
-            .pin-off { border-color: #64748b; color: #94a3b8; }
-            footer { text-align: center; padding: 15px; background: #0f172a; border-top: 1px solid #334155; color: #64748b; font-size: 0.85rem; }
+            :root {
+                --bg-main: #060913;
+                --card-bg: rgba(15, 23, 42, 0.75);
+                --card-border: rgba(255, 255, 255, 0.08);
+                --accent-cyan: #00f2fe;
+                --accent-emerald: #10b981;
+                --accent-amber: #f59e0b;
+                --accent-rose: #f43f5e;
+                --text-primary: #f8fafc;
+                --text-muted: #94a3b8;
+                --mono-font: 'JetBrains Mono', monospace;
+                --main-font: 'Plus Jakarta Sans', sans-serif;
+            }
+
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            
+            body {
+                background-color: var(--bg-main);
+                background-image: 
+                    radial-gradient(at 0% 0%, rgba(0, 242, 254, 0.08) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.06) 0px, transparent 50%);
+                color: var(--text-primary);
+                font-family: var(--main-font);
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            header {
+                background: rgba(15, 23, 42, 0.85);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--card-border);
+                padding: 16px 36px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .logo-group {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .logo-icon {
+                width: 42px;
+                height: 42px;
+                background: linear-gradient(135deg, #00f2fe, #4facfe);
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.4rem;
+                box-shadow: 0 0 20px rgba(0, 242, 254, 0.3);
+            }
+
+            h1 {
+                font-size: 1.35rem;
+                font-weight: 800;
+                letter-spacing: -0.02em;
+                background: linear-gradient(90deg, #ffffff, #cbd5e1);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+
+            .status-pill {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: rgba(16, 185, 129, 0.1);
+                border: 1px solid rgba(16, 185, 129, 0.3);
+                color: var(--accent-emerald);
+                padding: 6px 14px;
+                border-radius: 30px;
+                font-size: 0.82rem;
+                font-weight: 600;
+            }
+
+            .pulse-dot {
+                width: 8px;
+                height: 8px;
+                background-color: var(--accent-emerald);
+                border-radius: 50%;
+                box-shadow: 0 0 10px var(--accent-emerald);
+                animation: pulse 1.8s infinite;
+            }
+
+            @keyframes pulse {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+                70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+            }
+
+            .main-layout {
+                display: grid;
+                grid-template-columns: 2.2fr 1fr;
+                gap: 24px;
+                padding: 28px 36px;
+                flex-grow: 1;
+            }
+
+            .card {
+                background: var(--card-bg);
+                backdrop-filter: blur(16px);
+                border: 1px solid var(--card-border);
+                border-radius: 20px;
+                padding: 24px;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            }
+
+            .card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 18px;
+            }
+
+            .card-title {
+                font-size: 1.05rem;
+                font-weight: 700;
+                color: #e2e8f0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            /* Framing Alert Banner */
+            .framing-alert {
+                display: none;
+                background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
+                border: 1px solid rgba(245, 158, 11, 0.4);
+                color: #fbbf24;
+                padding: 12px 18px;
+                border-radius: 12px;
+                margin-bottom: 16px;
+                font-size: 0.88rem;
+                font-weight: 600;
+                align-items: center;
+                gap: 10px;
+                box-shadow: 0 0 15px rgba(245, 158, 11, 0.15);
+            }
+
+            .framing-alert.visible {
+                display: flex;
+                animation: fadeIn 0.4s ease;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-6px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            .video-viewport {
+                position: relative;
+                width: 100%;
+                border-radius: 16px;
+                overflow: hidden;
+                background: #000;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+            }
+
+            .video-viewport img {
+                width: 100%;
+                height: auto;
+                max-height: 520px;
+                display: block;
+                object-fit: contain;
+            }
+
+            /* Metric Widgets */
+            .metric-card {
+                background: rgba(10, 15, 30, 0.6);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                border-radius: 14px;
+                padding: 16px 20px;
+                margin-bottom: 14px;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .metric-card::before {
+                content: '';
+                position: absolute;
+                top: 0; left: 0; bottom: 0;
+                width: 4px;
+                background: var(--accent-cyan);
+            }
+
+            .metric-label {
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                letter-spacing: 1.2px;
+                color: var(--text-muted);
+                font-weight: 600;
+            }
+
+            .metric-value {
+                font-family: var(--mono-font);
+                font-size: 1.65rem;
+                font-weight: 700;
+                margin-top: 6px;
+                color: #ffffff;
+            }
+
+            /* Progress Bar */
+            .meter-container {
+                margin-top: 8px;
+                height: 6px;
+                background: rgba(255, 255, 255, 0.08);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+
+            .meter-fill {
+                height: 100%;
+                width: 0%;
+                background: linear-gradient(90deg, #00f2fe, #4facfe);
+                transition: width 0.4s ease;
+                border-radius: 10px;
+            }
+
+            /* PLC Grid */
+            .plc-matrix {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                margin-top: 10px;
+            }
+
+            .plc-cell {
+                background: rgba(10, 15, 30, 0.7);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+                border-radius: 12px;
+                padding: 12px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 0.8rem;
+                font-weight: 600;
+            }
+
+            .led-indicator {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: #334155;
+                box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+                transition: all 0.3s ease;
+            }
+
+            .led-indicator.on {
+                background: var(--accent-emerald);
+                box-shadow: 0 0 12px var(--accent-emerald);
+            }
+
+            .led-indicator.warn {
+                background: var(--accent-amber);
+                box-shadow: 0 0 12px var(--accent-amber);
+            }
+
+            footer {
+                padding: 16px 36px;
+                text-align: center;
+                border-top: 1px solid var(--card-border);
+                background: rgba(15, 23, 42, 0.5);
+                color: var(--text-muted);
+                font-size: 0.82rem;
+            }
         </style>
     </head>
     <body>
         <header>
-            <h1>🧍‍♂️ Human Posture AI Inspector <span class="badge">LIVE CV/EDGE PIPELINE</span></h1>
-            <div style="color: #4ade80; font-size: 0.9rem; font-weight: 600;">● System Operational</div>
+            <div class="logo-group">
+                <div class="logo-icon">🧍‍♂️</div>
+                <div>
+                    <h1>Posture Inspector AI</h1>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Industrial Ergonomics & Edge CV System</span>
+                </div>
+            </div>
+            <div class="status-pill">
+                <div class="pulse-dot"></div>
+                <span>EDGE ENGINE OPERATIONAL</span>
+            </div>
         </header>
 
-        <div class="container">
+        <div class="main-layout">
+            <!-- Left Column: Video Viewport -->
             <div class="card">
-                <h3 style="margin-bottom: 15px; color: #cbd5e1;">Live Video Stream & Posture HUD Overlay</h3>
-                <div class="video-container">
-                    <img class="video-stream" src="/video_feed" alt="Live Camera Posture Inspection Feed">
+                <div class="card-header">
+                    <div class="card-title">📹 Live Camera Feed & Augmented HUD</div>
+                    <span style="font-size: 0.78rem; font-family: var(--mono-font); color: var(--accent-cyan);">MediaPipe 33 Landmark Mesh</span>
+                </div>
+
+                <div class="framing-alert" id="framing-alert">
+                    <span>⚠️</span>
+                    <span><strong>CAMERA FRAMING NOTICE:</strong> Step back from camera so your upper torso and shoulders are visible for accurate posture classification.</span>
+                </div>
+
+                <div class="video-viewport">
+                    <img src="/video_feed" alt="Live Camera Posture Inspection Feed">
                 </div>
             </div>
 
+            <!-- Right Column: Real-time Telemetry -->
             <div style="display: flex; flex-direction: column; gap: 20px;">
                 <div class="card">
-                    <h3 style="margin-bottom: 15px; color: #cbd5e1;">Real-Time Telemetry</h3>
-                    <div class="stat-box">
-                        <div class="stat-title">Current Posture</div>
-                        <div class="stat-value" id="val-posture" style="color: #38bdf8;">Loading...</div>
+                    <div class="card-title" style="margin-bottom: 16px;">📊 Inference Telemetry</div>
+
+                    <div class="metric-card" style="border-left-color: var(--accent-cyan);">
+                        <div class="metric-label">Current Posture</div>
+                        <div class="metric-value" id="val-posture" style="color: var(--accent-cyan);">INITIALIZING...</div>
+                        <div class="meter-container">
+                            <div class="meter-fill" id="conf-fill"></div>
+                        </div>
                     </div>
-                    <div class="stat-box">
-                        <div class="stat-title">Ergonomic Strain Risk</div>
-                        <div class="stat-value" id="val-risk" style="color: #4ade80;">LOW RISK</div>
+
+                    <div class="metric-card" id="card-risk">
+                        <div class="metric-label">Ergonomic Risk Assessment</div>
+                        <div class="metric-value" id="val-risk">LOW RISK</div>
                     </div>
-                    <div class="stat-box">
-                        <div class="stat-title">Inference Speed & FPS</div>
-                        <div class="stat-value" id="val-performance">0.0 FPS / 0.0 ms</div>
+
+                    <div class="metric-card" style="border-left-color: #a855f7;">
+                        <div class="metric-label">Inference Latency</div>
+                        <div class="metric-value" id="val-latency">0.0 ms</div>
                     </div>
                 </div>
 
+                <!-- Industrial PLC Pins -->
                 <div class="card">
-                    <h3 style="margin-bottom: 10px; color: #cbd5e1;">Industrial PLC Relay Signals</h3>
-                    <div class="plc-grid" id="plc-pins">
-                        <div class="plc-pin pin-on">NORMAL_OP: 1</div>
-                        <div class="plc-pin pin-off">ALARM_LIGHT: 0</div>
-                        <div class="plc-pin pin-off">BUZZER_ALERT: 0</div>
-                        <div class="plc-pin pin-off">CONVEYOR_HALT: 0</div>
+                    <div class="card-title" style="margin-bottom: 14px;">⚡ Industrial PLC Safety Relays</div>
+                    <div class="plc-matrix" id="plc-matrix">
+                        <div class="plc-cell">
+                            <div class="led-indicator on"></div>
+                            <span>NORMAL_OP</span>
+                        </div>
+                        <div class="plc-cell">
+                            <div class="led-indicator"></div>
+                            <span>ALARM_LIGHT</span>
+                        </div>
+                        <div class="plc-cell">
+                            <div class="led-indicator"></div>
+                            <span>BUZZER_ALERT</span>
+                        </div>
+                        <div class="plc-cell">
+                            <div class="led-indicator"></div>
+                            <span>CONVEYOR_HALT</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <footer>
-            Built with OpenCV, MediaPipe, PyTorch & FastAPI | Edge AI Computer Vision Solution
+            Engineered with OpenCV, MediaPipe Pose, PyTorch & FastAPI | High-Performance Computer Vision Edge Solution
         </footer>
 
         <script>
-            async function updateTelemetry() {
+            async function pollTelemetry() {
                 try {
                     const res = await fetch('/api/telemetry');
                     const data = await res.json();
+
                     if (data && data.operator_posture) {
-                        document.getElementById('val-posture').innerText = data.operator_posture.toUpperCase() + ` (${(data.model_confidence*100).toFixed(0)}%)`;
-                        document.getElementById('val-risk').innerText = data.ergonomic_risk;
-                        document.getElementById('val-risk').style.color = data.ergonomic_risk === 'HIGH RISK' ? '#ef4444' : (data.ergonomic_risk === 'MODERATE RISK' ? '#f97316' : '#4ade80');
-                        document.getElementById('val-performance').innerText = `${data.inference_latency_ms.toFixed(1)} ms latency`;
-                        
-                        const pins = data.plc_digital_outputs || {};
-                        let html = '';
-                        for (const [k, v] of Object.entries(pins)) {
-                            const cls = v === 1 ? 'pin-on' : 'pin-off';
-                            html += `<div class="plc-pin ${cls}">${k.replace('PLC_OUT_', '')}: ${v}</div>`;
+                        const posture = data.operator_posture.toUpperCase();
+                        const conf = (data.model_confidence * 100).toFixed(0);
+                        const risk = data.ergonomic_risk;
+                        const latency = data.inference_latency_ms.toFixed(1);
+
+                        // Update Posture text & meter
+                        document.getElementById('val-posture').innerText = posture + ` (${conf}%)`;
+                        document.getElementById('conf-fill').style.width = conf + '%';
+
+                        // Check framing alert (too close to camera)
+                        const alertBox = document.getElementById('framing-alert');
+                        if (posture.includes('STEP BACK') || risk === 'FRAMING WARNING') {
+                            alertBox.classList.add('visible');
+                        } else {
+                            alertBox.classList.remove('visible');
                         }
-                        document.getElementById('plc-pins').innerHTML = html;
+
+                        // Update Risk Card
+                        const riskEl = document.getElementById('val-risk');
+                        riskEl.innerText = risk;
+                        if (risk === 'HIGH RISK') {
+                            riskEl.style.color = 'var(--accent-rose)';
+                        } else if (risk === 'MODERATE RISK' || risk === 'FRAMING WARNING') {
+                            riskEl.style.color = 'var(--accent-amber)';
+                        } else {
+                            riskEl.style.color = 'var(--accent-emerald)';
+                        }
+
+                        // Latency readout
+                        document.getElementById('val-latency').innerText = `${latency} ms`;
+
+                        // PLC Pins rendering
+                        const pins = data.plc_digital_outputs || {};
+                        let plcHtml = '';
+                        for (const [pin, val] of Object.entries(pins)) {
+                            const pinName = pin.replace('PLC_OUT_', '');
+                            const ledClass = val === 1 ? (pinName.includes('ALARM') || pinName.includes('HALT') ? 'led-indicator warn' : 'led-indicator on') : 'led-indicator';
+                            plcHtml += `
+                                <div class="plc-cell">
+                                    <div class="${ledClass}"></div>
+                                    <span>${pinName}</span>
+                                </div>
+                            `;
+                        }
+                        document.getElementById('plc-matrix').innerHTML = plcHtml;
                     }
                 } catch(e) {}
             }
-            setInterval(updateTelemetry, 500);
+            setInterval(pollTelemetry, 400);
         </script>
     </body>
     </html>
