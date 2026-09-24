@@ -8,15 +8,32 @@ root_dir = os.path.dirname(os.path.abspath(__file__))
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-import argparse
-import cv2
+try:
+    import argparse
+    import cv2
+    from posture_inspector.tracker import PoseTracker
+    from posture_inspector.edge_integration.plc_dispatcher import IndustrialPLCDispatcher
+    from posture_inspector.dashboard.app import app as dashboard_app
 
-from posture_inspector.tracker import PoseTracker
-from posture_inspector.edge_integration.plc_dispatcher import IndustrialPLCDispatcher
-from posture_inspector.dashboard.app import app as dashboard_app
+    # Top-level FastAPI instance for Vercel deployment & CLI entry point
+    app = dashboard_app
+except Exception as e:
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    from fastapi import FastAPI
+    from fastapi.responses import HTMLResponse
+    app = FastAPI(title="Serverless Startup Error")
+    err_msg = traceback.format_exc()
 
-# Top-level FastAPI instance for Vercel deployment & CLI entry point
-app = dashboard_app
+    @app.api_route("/{full_path:path}", methods=["GET", "POST"])
+    def catch_all(full_path: str = ""):
+        return HTMLResponse(
+            f"<html><body style='background:#0b0f19;color:#f87171;font-family:sans-serif;padding:30px;'>"
+            f"<h2>⚠️ Serverless Startup Error</h2>"
+            f"<pre style='background:#020617;border:1px solid #334155;color:#fca5a5;padding:20px;border-radius:8px;overflow-x:auto;'>{err_msg}</pre>"
+            f"</body></html>",
+            status_code=500
+        )
 
 def run_webcam_mode(camera_id=0):
     """Run real-time posture inspection on local webcam feed."""
