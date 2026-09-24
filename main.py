@@ -1,8 +1,14 @@
 import sys
+import os
+
 sys.modules['tensorflow'] = None
 
+# Ensure project root is in sys.path for serverless execution
+root_dir = os.path.dirname(os.path.abspath(__file__))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
 import argparse
-import os
 import cv2
 
 from posture_inspector.tracker import PoseTracker
