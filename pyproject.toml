@@ -1,0 +1,2 @@
+[tool.vercel]
+entrypoint = "posture_inspector.dashboard.app:app"

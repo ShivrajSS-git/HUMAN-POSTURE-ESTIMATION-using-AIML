@@ -8,6 +8,7 @@ import cv2
 from posture_inspector.tracker import PoseTracker
 from posture_inspector.edge_integration.plc_dispatcher import IndustrialPLCDispatcher
 from posture_inspector.models.train import train_models
+from posture_inspector.dashboard.app import app
 
 def run_webcam_mode(camera_id=0):
     """Run real-time posture inspection on local webcam feed."""

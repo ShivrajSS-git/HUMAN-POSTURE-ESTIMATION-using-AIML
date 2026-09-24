@@ -1,14 +1,20 @@
 import os
 import joblib
 import numpy as np
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
+    torch = None
+    nn = None
 
 CLASSES = ["sitting", "standing", "bending", "slouching"]
 CLASS_TO_IDX = {cls_name: i for i, cls_name in enumerate(CLASSES)}
 IDX_TO_CLASS = {i: cls_name for i, cls_name in enumerate(CLASSES)}
 
-class PosturePyTorchNet(nn.Module):
+class PosturePyTorchNet(nn.Module if HAS_TORCH else object):
     """
     Deep Neural Network (MLP) for Posture Classification using PyTorch.
     Input vector size: 108 features.
@@ -50,7 +56,7 @@ class PostureClassifierManager:
 
     def _load_models(self):
         # Load PyTorch Model if available
-        if os.path.exists(self.pytorch_model_path):
+        if HAS_TORCH and os.path.exists(self.pytorch_model_path):
             try:
                 model = PosturePyTorchNet()
                 model.load_state_dict(torch.load(self.pytorch_model_path, map_location=torch.device('cpu'), weights_only=True))

@@ -118,13 +118,20 @@ Train PyTorch & Scikit-Learn models with dataset loading and data augmentation:
 python main.py --mode train
 ```
 
-### 6. Run Automated Test Suite
+### 7. Deploy to Vercel (Serverless Cloud)
 
-Run the `pytest` suite to verify feature extraction, model inference, framing checks, and PLC dispatcher logic:
+Deploy the FastAPI Web Dashboard & AI Inference System to **Vercel** with a single command:
 
+#### Option A: Using Vercel CLI
 ```bash
-python -m pytest tests/ -v
+npm i -g vercel
+vercel
 ```
+
+#### Option B: Deploy via GitHub Integration
+1. Push your repository to GitHub.
+2. Go to [Vercel Dashboard](https://vercel.com/new) and import your repository.
+3. Vercel automatically detects `vercel.json` and `api/index.py` for Python serverless deployment!
 
 ---
 
