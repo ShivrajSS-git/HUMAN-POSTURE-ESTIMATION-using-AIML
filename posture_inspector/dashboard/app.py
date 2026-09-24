@@ -128,52 +128,29 @@ async def predict_image(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
 
 
-def generate_frames():
-    """MJPEG Video Stream Generator for local execution."""
-    tr, plc = get_engine()
-    
-    cap = cv2.VideoCapture(0)
-    camera_available = cap.isOpened()
-    
-    test_img_path = os.path.join(root_dir, "HUMAN POSTURE ESTIMATION", "test_images", "test_standing.jpeg")
-    test_img = None
-    if not camera_available and os.path.exists(test_img_path):
-        test_img = cv2.imread(test_img_path)
-
-    while True:
-        if camera_available:
-            success, frame = cap.read()
-            if not success:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                continue
-        else:
-            if test_img is not None:
-                frame = test_img.copy()
-            else:
-                frame = np.zeros((480, 640, 3), dtype=np.uint8)
-                cv2.putText(frame, "VIDEO FEED OFFLINE", (150, 240),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
-            time.sleep(0.05)
-
-        processed_frame, _ = tr.process_frame(frame, draw_hud=True, plc_dispatcher=plc)
-
-        ret, buffer = cv2.imencode('.jpg', processed_frame)
-        if not ret:
-            continue
-
-        frame_bytes = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
-        # In serverless environments, avoid infinite loops blocking function execution
-        if not camera_available:
-            time.sleep(0.1)
+@app.get("/favicon.ico")
+def favicon():
+    """Favicon endpoint returning 204 No Content for serverless routes."""
+    return Response(status_code=204)
 
 
 @app.get("/video_feed")
 def video_feed():
-    """MJPEG video stream endpoint."""
-    return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
+    """Serverless-safe video feed endpoint returning annotated sample frame."""
+    tr, plc = get_engine()
+    test_img_path = os.path.join(root_dir, "HUMAN POSTURE ESTIMATION", "test_images", "test_standing.jpeg")
+    if os.path.exists(test_img_path):
+        frame = cv2.imread(test_img_path)
+    else:
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        cv2.putText(frame, "POSTURE AI READY", (150, 240),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
+
+    processed_frame, _ = tr.process_frame(frame, draw_hud=True, plc_dispatcher=plc)
+    ret, buffer = cv2.imencode('.jpg', processed_frame)
+    if ret:
+        return Response(content=buffer.tobytes(), media_type="image/jpeg")
+    return Response(content=b"", media_type="image/jpeg")
 
 
 @app.get("/", response_class=HTMLResponse)
