@@ -3,7 +3,13 @@ sys.modules['tensorflow'] = None
 
 import time
 import cv2
-import mediapipe as mp
+try:
+    import mediapipe as mp
+    HAS_MEDIAPIPE = True
+except ImportError:
+    mp = None
+    HAS_MEDIAPIPE = False
+
 import numpy as np
 
 from posture_inspector.feature_extractor import FeatureExtractor
@@ -16,17 +22,20 @@ class PoseTracker:
     and ML/DL model inference.
     """
     def __init__(self, static_image_mode=False, min_detection_confidence=0.6, min_tracking_confidence=0.6):
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_drawing_styles = mp.solutions.drawing_styles
-        self.mp_pose = mp.solutions.pose
+        if HAS_MEDIAPIPE:
+            self.mp_drawing = mp.solutions.drawing_utils
+            self.mp_drawing_styles = mp.solutions.drawing_styles
+            self.mp_pose = mp.solutions.pose
 
-        self.pose = self.mp_pose.Pose(
-            static_image_mode=static_image_mode,
-            model_complexity=1,
-            smooth_landmarks=True,
-            min_detection_confidence=min_detection_confidence,
-            min_tracking_confidence=min_tracking_confidence,
-        )
+            self.pose = self.mp_pose.Pose(
+                static_image_mode=static_image_mode,
+                model_complexity=1,
+                smooth_landmarks=True,
+                min_detection_confidence=min_detection_confidence,
+                min_tracking_confidence=min_tracking_confidence,
+            )
+        else:
+            self.pose = None
 
         self.classifier = PostureClassifierManager()
         self.prev_time = time.time()
@@ -51,7 +60,7 @@ class PoseTracker:
 
         h, w, c = frame.shape
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.pose.process(rgb_frame)
+        results = self.pose.process(rgb_frame) if (HAS_MEDIAPIPE and self.pose is not None) else None
 
         result_info = {
             "pose_detected": False,
@@ -65,7 +74,7 @@ class PoseTracker:
             "plc_state": {}
         }
 
-        if results.pose_landmarks:
+        if results is not None and results.pose_landmarks:
             result_info["pose_detected"] = True
             landmarks = results.pose_landmarks.landmark
             result_info["landmarks"] = landmarks
@@ -195,4 +204,5 @@ class PoseTracker:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (220, 220, 220), 1)
 
     def close(self):
-        self.pose.close()
+        if self.pose is not None:
+            self.pose.close()
