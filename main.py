@@ -7,7 +7,6 @@ import cv2
 
 from posture_inspector.tracker import PoseTracker
 from posture_inspector.edge_integration.plc_dispatcher import IndustrialPLCDispatcher
-from posture_inspector.models.train import train_models
 from posture_inspector.dashboard.app import app as dashboard_app
 
 # Top-level FastAPI instance for Vercel deployment & CLI entry point
@@ -107,6 +106,7 @@ def main():
         from posture_inspector.dashboard.app import run_dashboard
         run_dashboard(port=args.port)
     elif args.mode == "train":
+        from posture_inspector.models.train import train_models
         train_models()
     elif args.mode == "test-image":
         run_test_image_mode(args.image)
