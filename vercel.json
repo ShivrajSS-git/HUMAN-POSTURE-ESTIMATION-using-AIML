@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "posture_inspector/dashboard/app.py",
+      "src": "main.py",
       "use": "@vercel/python",
       "config": {
         "maxDuration": 15
@@ -12,7 +12,7 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "posture_inspector/dashboard/app.py"
+      "dest": "main.py"
     }
   ]
 }
